@@ -10,6 +10,9 @@
 //
 // Flags combine explicitly and nothing is implied: CHANGELOG.md is only
 // written with -write, and -release requires -tag.
+//
+// While the major version is 0, bumps shift one level down (breaking
+// changes bump minor, features bump patch); v1.0.0 must be tagged manually.
 package main
 
 import (
@@ -72,6 +75,17 @@ func main() {
 	}
 
 	bump := bumpLevel(commits)
+	if major == 0 {
+		// Pre-1.0 the API is not considered stable (SemVer item 4), so bumps
+		// shift one level down: breaking changes bump minor, features bump
+		// patch. v1.0.0 is only ever released by tagging it explicitly.
+		switch bump {
+		case "major":
+			bump = "minor"
+		case "minor":
+			bump = "patch"
+		}
+	}
 	switch bump {
 	case "major":
 		major, minor, patch = major+1, 0, 0
