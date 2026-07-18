@@ -55,13 +55,32 @@ func nextVersion(latest string, commits []commit) (next, bump string, err error)
 			bump = "patch"
 		}
 	}
+	major, minor, patch = applyBump(major, minor, patch, bump)
+	return fmt.Sprintf("v%d.%d.%d", major, minor, patch), bump, nil
+}
+
+// forcedVersion computes the next version from an explicitly chosen bump
+// level, bypassing commit analysis and the pre-1.0 downshift.
+func forcedVersion(latest, bump string) (string, error) {
+	var major, minor, patch int
+	if latest != "" {
+		var err error
+		major, minor, patch, err = parseVersion(latest)
+		if err != nil {
+			return "", err
+		}
+	}
+	major, minor, patch = applyBump(major, minor, patch, bump)
+	return fmt.Sprintf("v%d.%d.%d", major, minor, patch), nil
+}
+
+func applyBump(major, minor, patch int, bump string) (int, int, int) {
 	switch bump {
 	case "major":
-		major, minor, patch = major+1, 0, 0
+		return major + 1, 0, 0
 	case "minor":
-		minor, patch = minor+1, 0
+		return major, minor + 1, 0
 	default:
-		patch++
+		return major, minor, patch + 1
 	}
-	return fmt.Sprintf("v%d.%d.%d", major, minor, patch), bump, nil
 }

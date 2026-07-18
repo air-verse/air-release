@@ -13,6 +13,9 @@
 //
 // While the major version is 0, bumps shift one level down (breaking
 // changes bump minor, features bump patch); v1.0.0 must be tagged manually.
+//
+// The bump level is inferred from the commits, but -bump major|minor|patch
+// forces a specific level, bypassing inference and the pre-1.0 downshift.
 package main
 
 import (
@@ -28,9 +31,15 @@ func main() {
 	write := flag.Bool("write", false, "prepend the new section to CHANGELOG.md")
 	tag := flag.Bool("tag", false, "create the git tag")
 	release := flag.Bool("release", false, "push the tag and create a GitHub release via gh (requires -tag)")
+	forced := flag.String("bump", "", "force the bump level (major, minor, or patch) instead of inferring it from commits")
 	flag.Parse()
 	if *release && !*tag {
 		fatal("-release requires -tag: run air-release -tag -release")
+	}
+	switch *forced {
+	case "", "major", "minor", "patch":
+	default:
+		fatal("-bump must be major, minor, or patch (got %q)", *forced)
 	}
 
 	latest, err := gitOut("describe", "--tags", "--abbrev=0")
@@ -55,7 +64,13 @@ func main() {
 		return
 	}
 
-	next, bump, err := nextVersion(latest, commits)
+	var next, bump string
+	if *forced != "" {
+		bump = *forced
+		next, err = forcedVersion(latest, bump)
+	} else {
+		next, bump, err = nextVersion(latest, commits)
+	}
 	if err != nil {
 		fatal("%v", err)
 	}
@@ -66,7 +81,11 @@ func main() {
 	} else {
 		fmt.Printf("latest tag:   %s\n", latest)
 	}
-	fmt.Printf("next version: %s (%s bump, %d commits)\n\n", next, bump, len(commits))
+	if *forced != "" {
+		fmt.Printf("next version: %s (%s bump, forced, %d commits)\n\n", next, bump, len(commits))
+	} else {
+		fmt.Printf("next version: %s (%s bump, %d commits)\n\n", next, bump, len(commits))
+	}
 	fmt.Println(section)
 
 	if *write {

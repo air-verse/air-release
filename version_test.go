@@ -85,6 +85,38 @@ func TestNextVersion(t *testing.T) {
 	}
 }
 
+func TestForcedVersion(t *testing.T) {
+	tests := []struct {
+		name   string
+		latest string
+		bump   string
+		want   string
+	}{
+		{"forced major", "v1.2.3", "major", "v2.0.0"},
+		{"forced minor", "v1.2.3", "minor", "v1.3.0"},
+		{"forced patch", "v1.2.3", "patch", "v1.2.4"},
+		{"pre-1.0 forced major skips downshift", "v0.5.2", "major", "v1.0.0"},
+		{"pre-1.0 forced minor skips downshift", "v0.5.2", "minor", "v0.6.0"},
+		{"first release forced minor", "", "minor", "v0.1.0"},
+	}
+	for _, tt := range tests {
+		next, err := forcedVersion(tt.latest, tt.bump)
+		if err != nil {
+			t.Errorf("%s: unexpected error: %v", tt.name, err)
+			continue
+		}
+		if next != tt.want {
+			t.Errorf("%s: forcedVersion = %q, want %q", tt.name, next, tt.want)
+		}
+	}
+}
+
+func TestForcedVersionBadTag(t *testing.T) {
+	if _, err := forcedVersion("not-a-version", "minor"); err == nil {
+		t.Error("expected error for non-semver latest tag")
+	}
+}
+
 func TestNextVersionBadTag(t *testing.T) {
 	if _, _, err := nextVersion("not-a-version", []commit{{typ: "fix"}}); err == nil {
 		t.Error("expected error for non-semver latest tag")

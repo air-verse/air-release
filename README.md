@@ -49,6 +49,13 @@ Commits since the latest `vX.Y.Z` tag are parsed as conventional commits:
 | `feat: ...` | minor |
 | anything else (`fix:`, `docs:`, non-conventional, ...) | patch |
 
+While the major version is 0, bumps shift one level down (breaking changes
+bump minor, features bump patch); `v1.0.0` must be tagged explicitly.
+
+To override the inferred level, pass `-bump major`, `-bump minor`, or
+`-bump patch`. A forced bump is applied literally — the pre-1.0 downshift
+does not apply, so `air-release -bump major -tag` on `v0.5.2` tags `v1.0.0`.
+
 The changelog groups commits into Breaking Changes / Features / Bug Fixes /
 Performance / Others. Non-conventional commits are kept under Others rather
 than dropped, so review the output before tagging.
