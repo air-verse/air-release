@@ -62,4 +62,4 @@ than dropped, so review the output before tagging.
 
 ## License
 
-[GPL-3.0](LICENSE)
+[MIT](LICENSE)
