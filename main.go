@@ -36,11 +36,18 @@ func main() {
 
 	latest, err := gitOut("describe", "--tags", "--abbrev=0")
 	if err != nil {
-		fatal("finding latest tag: %v", err)
+		if !strings.Contains(err.Error(), "cannot describe anything") {
+			fatal("finding latest tag: %v", err)
+		}
+		// New project with no tags yet: first release, counted from v0.0.0.
+		latest = ""
 	}
-	major, minor, patch, err := parseVersion(latest)
-	if err != nil {
-		fatal("%v", err)
+	var major, minor, patch int
+	if latest != "" {
+		major, minor, patch, err = parseVersion(latest)
+		if err != nil {
+			fatal("%v", err)
+		}
 	}
 
 	commits, err := commitsSince(latest)
@@ -48,7 +55,11 @@ func main() {
 		fatal("reading commits: %v", err)
 	}
 	if len(commits) == 0 {
-		fmt.Printf("no commits since %s, nothing to release\n", latest)
+		if latest == "" {
+			fmt.Println("no commits yet, nothing to release")
+		} else {
+			fmt.Printf("no commits since %s, nothing to release\n", latest)
+		}
 		return
 	}
 
@@ -64,7 +75,11 @@ func main() {
 	next := fmt.Sprintf("v%d.%d.%d", major, minor, patch)
 
 	section := changelogSection(next, commits)
-	fmt.Printf("latest tag:   %s\n", latest)
+	if latest == "" {
+		fmt.Println("latest tag:   (none, first release)")
+	} else {
+		fmt.Printf("latest tag:   %s\n", latest)
+	}
 	fmt.Printf("next version: %s (%s bump, %d commits)\n\n", next, bump, len(commits))
 	fmt.Println(section)
 
@@ -106,8 +121,15 @@ func parseVersion(tag string) (major, minor, patch int, err error) {
 
 func commitsSince(tag string) ([]commit, error) {
 	// %x1f separates fields, %x1e separates commits.
-	out, err := gitOut("log", tag+"..HEAD", "--no-merges", "--pretty=format:%h%x1f%s%x1f%b%x1e")
+	rangeSpec := "HEAD"
+	if tag != "" {
+		rangeSpec = tag + "..HEAD"
+	}
+	out, err := gitOut("log", rangeSpec, "--no-merges", "--pretty=format:%h%x1f%s%x1f%b%x1e")
 	if err != nil {
+		if tag == "" && strings.Contains(err.Error(), "unknown revision") {
+			return nil, nil // repository has no commits yet
+		}
 		return nil, err
 	}
 	var commits []commit
