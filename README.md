@@ -17,11 +17,15 @@ go install github.com/air-verse/air-release@latest
 Run from the root of the repository you want to release:
 
 ```shell
-air-release           # preview the next version and changelog
-air-release -write    # also prepend the new section to CHANGELOG.md
-air-release -tag      # also create the annotated git tag (implies -write)
-air-release -release  # also push the tag and create a GitHub release (implies -tag)
+air-release                # preview the next version and changelog
+air-release -write         # also prepend the new section to CHANGELOG.md
+air-release -tag           # also create the annotated git tag
+air-release -tag -release  # also push the tag and create a GitHub release
 ```
+
+Flags combine explicitly and nothing is implied — e.g. `air-release -tag -write`
+to both tag and update CHANGELOG.md, or `air-release -write -tag -release` for
+everything. Only `-write` touches CHANGELOG.md, and `-release` requires `-tag`.
 
 With `-tag`, push the tag manually to trigger your release pipeline
 (e.g. goreleaser):

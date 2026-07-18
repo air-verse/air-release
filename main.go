@@ -3,10 +3,13 @@
 //
 // Run it from the root of the repository you want to release:
 //
-//	air-release           # preview next version and changelog
-//	air-release -write    # also prepend the section to CHANGELOG.md
-//	air-release -tag      # also create the git tag (implies -write)
-//	air-release -release  # also push the tag and create a GitHub release via gh (implies -tag)
+//	air-release                # preview next version and changelog
+//	air-release -write         # also prepend the section to CHANGELOG.md
+//	air-release -tag           # also create the git tag
+//	air-release -tag -release  # also push the tag and create a GitHub release via gh
+//
+// Flags combine explicitly and nothing is implied: CHANGELOG.md is only
+// written with -write, and -release requires -tag.
 package main
 
 import (
@@ -32,14 +35,11 @@ type commit struct {
 
 func main() {
 	write := flag.Bool("write", false, "prepend the new section to CHANGELOG.md")
-	tag := flag.Bool("tag", false, "create the git tag (implies -write)")
-	release := flag.Bool("release", false, "push the tag and create a GitHub release via gh (implies -tag)")
+	tag := flag.Bool("tag", false, "create the git tag")
+	release := flag.Bool("release", false, "push the tag and create a GitHub release via gh (requires -tag)")
 	flag.Parse()
-	if *release {
-		*tag = true
-	}
-	if *tag {
-		*write = true
+	if *release && !*tag {
+		fatal("-release requires -tag: run air-release -tag -release")
 	}
 
 	latest, err := gitOut("describe", "--tags", "--abbrev=0")
