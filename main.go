@@ -6,6 +6,7 @@
 //	air-release           # preview next version and changelog
 //	air-release -write    # also prepend the section to CHANGELOG.md
 //	air-release -tag      # also create the git tag (implies -write)
+//	air-release -release  # also push the tag and create a GitHub release via gh (implies -tag)
 package main
 
 import (
@@ -32,7 +33,14 @@ type commit struct {
 func main() {
 	write := flag.Bool("write", false, "prepend the new section to CHANGELOG.md")
 	tag := flag.Bool("tag", false, "create the git tag (implies -write)")
+	release := flag.Bool("release", false, "push the tag and create a GitHub release via gh (implies -tag)")
 	flag.Parse()
+	if *release {
+		*tag = true
+	}
+	if *tag {
+		*write = true
+	}
 
 	latest, err := gitOut("describe", "--tags", "--abbrev=0")
 	if err != nil {
@@ -83,7 +91,7 @@ func main() {
 	fmt.Printf("next version: %s (%s bump, %d commits)\n\n", next, bump, len(commits))
 	fmt.Println(section)
 
-	if *write || *tag {
+	if *write {
 		if err := prependChangelog(section); err != nil {
 			fatal("updating CHANGELOG.md: %v", err)
 		}
@@ -93,8 +101,34 @@ func main() {
 		if _, err := gitOut("tag", "-a", next, "-m", "Release "+next); err != nil {
 			fatal("creating tag: %v", err)
 		}
-		fmt.Printf("tag %s created; push it with: git push origin %s\n", next, next)
+		if *release {
+			fmt.Printf("tag %s created\n", next)
+		} else {
+			fmt.Printf("tag %s created; push it with: git push origin %s\n", next, next)
+		}
 	}
+	if *release {
+		if err := createGitHubRelease(next, section); err != nil {
+			fatal("creating GitHub release: %v", err)
+		}
+		fmt.Printf("GitHub release %s created\n", next)
+	}
+}
+
+// createGitHubRelease pushes the tag and creates a release with the gh CLI,
+// using the generated changelog section as the release notes.
+func createGitHubRelease(version, notes string) error {
+	if _, err := exec.LookPath("gh"); err != nil {
+		return fmt.Errorf("gh CLI not found in PATH; install it from https://cli.github.com/")
+	}
+	if _, err := gitOut("push", "origin", version); err != nil {
+		return fmt.Errorf("pushing tag: %w", err)
+	}
+	cmd := exec.Command("gh", "release", "create", version,
+		"--title", version, "--notes", notes)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 func gitOut(args ...string) (string, error) {
