@@ -105,21 +105,27 @@ func main() {
 		}
 	}
 	if *release {
-		if err := createGitHubRelease(next, section); err != nil {
+		if err := createGitHubRelease(next, latest); err != nil {
 			fatal("creating GitHub release: %v", err)
 		}
 		fmt.Printf("GitHub release %s created\n", next)
 	}
 }
 
-// createGitHubRelease pushes the tag and creates a release with the gh CLI,
-// using the generated changelog section as the release notes.
-func createGitHubRelease(version, notes string) error {
+// createGitHubRelease pushes the tag and creates a release with the gh CLI.
+// The release notes come from GitHub's own generate-notes API (grouped into
+// Features/Bug Fixes/Others), not the local CHANGELOG.md section, since only
+// GitHub knows PR authors and first-time contributors.
+func createGitHubRelease(version, previousTag string) error {
 	if _, err := exec.LookPath("gh"); err != nil {
 		return fmt.Errorf("gh CLI not found in PATH; install it from https://cli.github.com/")
 	}
 	if _, err := gitOut("push", "origin", version); err != nil {
 		return fmt.Errorf("pushing tag: %w", err)
+	}
+	notes, err := githubReleaseNotes(version, previousTag)
+	if err != nil {
+		return fmt.Errorf("generating release notes: %w", err)
 	}
 	cmd := exec.Command("gh", "release", "create", version,
 		"--title", version, "--notes", notes)
